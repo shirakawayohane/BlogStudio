@@ -1,0 +1,125 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+:root {
+    --base-color: #eee;
+    --text-color: #333;
+    --shadow-color: #b8b9be;
+    --light-color: rgb(243, 243, 243);
+    --shadow-radius: 2px;
+    --light-radius: 3px;
+}
+
+li {
+    list-style: none;
+}
+
+body {
+    font-family: 'Noto Sans JP', sans-serif;
+}
+
+body {
+    color: var(--text-color);
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.5;
+    text-align: left;
+    background-color: var(--base-color);
+    width: 100%;
+}
+
+/* reset default button style */
+button{
+    color: var(--text-color);
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    outline: none;
+    padding: 0;
+    appearance: none;
+}
+
+.neum {
+    border-radius: 5px;
+    box-shadow: var(--shadow-radius) var(--shadow-radius) calc(1.5 * var(--shadow-radius)) var(--shadow-color),
+     calc(-1 * var(--light-radius)) calc(-1 * var(--light-radius)) calc(1.5 * var(--light-radius)) var(--light-color);
+}
+
+.neum.clickable:active {
+    background-color: var(--base-color);
+    border-color: var(--base-color);
+    box-shadow: inset var(--shadow-radius) var(--shadow-radius) calc(1.5 * var(--shadow-radius)) var(--shadow-color),
+     inset calc(-1 * var(--light-radius)) calc(-1 * var(--light-radius)) calc(1.5 * var(--light-radius)) var(--light-color);
+}
+
+.neum-text {
+    /* color: var(--base-color);
+    text-shadow: var(--shadow-radius) var(--shadow-radius) calc(1.5 * var(--shadow-radius)) var(--shadow-color),
+     calc(-1 * var(--light-radius)) calc(-1 * var(--light-radius)) calc(1.5 * var(--light-radius)) var(--light-color); */
+     color: rgba(168, 168, 168, 0.4); text-shadow: 2px 2px 2px var(--light-color), 0 0 var(--base-color);
+}
+
+.neum-inset,
+.neum.inset,
+a:active,
+button:active {
+    background-color: var(--base-color);
+    border-color: var(--base-color);
+    box-shadow: inset var(--shadow-radius) var(--shadow-radius) calc(1.5 * var(--shadow-radius)) var(--shadow-color),
+     inset calc(-1 * var(--light-radius)) calc(-1 * var(--light-radius)) calc(1.5 * var(--light-radius)) var(--light-color);
+}
+
+button {
+    display: inline-block;
+    font-weight: 500;
+    text-align: center;
+    vertical-align: middle;
+    position: relative;
+    padding: .55rem .96rem;
+    border-radius: .55rem;
+    letter-spacing: .025em;
+    border-color: #d1d9e6;
+    box-shadow: var(--shadow-radius) var(--shadow-radius) calc(1.5 * var(--shadow-radius)) var(--shadow-color),
+     calc(-1 * var(--light-radius)) calc(-1 * var(--light-radius)) calc(1.5 * var(--light-radius)) var(--light-color);
+    margin: 8px;
+}
+
+article code {
+    display: block;
+    padding: 8px;
+    font-family: Consolas;
+    box-shadow: inset 2px 2px 3px var(--shadow-color), inset -3px -3px 4px var(--light-color);
+}
+
+img {
+    max-width: 100%;
+}
+
+.round {
+    border-radius: 50%;
+}
+
+.p-1 {
+    padding: 4px;
+}
+.p-2 {
+    padding: 8px;
+}
+.p-3 {
+    padding: 12px;
+}
+.p-4 {
+    padding: 16px;
+}
+.m-1 {
+    margin: 4px;
+}
+.m-2 {
+    margin: 8px;
+}
+.m-3 {
+    margin: 12px;
+}
+.m-4 {
+    margin: 16px;
+}
