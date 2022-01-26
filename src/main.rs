@@ -1,3 +1,6 @@
+use chrono::Date;
+use chrono::DateTime;
+use chrono::Utc;
 use pulldown_cmark::{html, Options, Parser};
 use std::env;
 use std::fs;
@@ -7,8 +10,8 @@ use yaml_rust::YamlLoader;
 #[derive(Debug)]
 struct Article {
     title: String,
-    created_at: String,
-    updated_at: String,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
     categories: Vec<String>,
     html: String,
 }
@@ -28,8 +31,10 @@ fn main() {
 
     let mut articles = Vec::new();
 
-    for path in fs::read_dir(input_path).unwrap() {
-        let _file_content = fs::read_to_string(path.unwrap().path()).unwrap(); // 実際はStringなので、ちゃんと左辺値に束縛しておく
+    for dirEntry in fs::read_dir(input_path).unwrap() {
+        let path = dirEntry.unwrap().path();
+        let _file_content = fs::read_to_string(path.clone()).unwrap(); // 実際はStringなので、ちゃんと左辺値に束縛しておく
+        let file_meta = fs::metadata(path).unwrap();
         let file_content = _file_content.as_str();
         // let starts_with = file_content.starts_with("---");
         // dbg!(starts_with);
@@ -61,14 +66,16 @@ fn main() {
             .as_str()
             .expect("メタデータの 'title' は必須項目です")
             .to_string();
-        let created_at = metadata["created_at"]
-            .as_str()
-            .expect("メタデータの 'created_at' は必須項目です")
-            .to_string();
-        let updated_at = metadata["updated_at"]
-            .as_str()
-            .expect("メタデータの 'updated_at' は必須項目です")
-            .to_string();
+        // let created_at = metadata["created_at"]
+        //     .as_str()
+        //     .expect("メタデータの 'created_at' は必須項目です")
+        //     .to_string();
+        // let updated_at = metadata["updated_at"]
+        //     .as_str()
+        //     .expect("メタデータの 'updated_at' は必須項目です")
+        //     .to_string();
+        let created_at: DateTime<Utc> = file_meta.created().unwrap().into();
+        let updated_at: DateTime<Utc> = file_meta.created().unwrap().into();
         let categories = metadata["categories"]
             .as_vec()
             .expect("categoriesは配列型である必要があります。")
@@ -93,5 +100,6 @@ fn main() {
         });
     }
 
-    dbg!(articles);
+    // dbg!(articles);
+    println!("{}", articles[0].created_at.format("%Y-%m-%d"));
 }
