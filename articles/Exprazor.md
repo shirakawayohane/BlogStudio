@@ -1,6 +1,10 @@
 ---
 title: "VirtualDOMの作り方"
 created_at: "2021-12-21"
+updated_at: "2022-01-26"
+categories:
+    - C#
+    - Web
 ---
 
 # はじめに
