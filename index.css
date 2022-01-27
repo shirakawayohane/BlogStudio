@@ -39,6 +39,14 @@ button{
     appearance: none;
 }
 
+article {
+    margin: 10px 50px;
+    box-shadow: var(--shadow-radius) var(--shadow-radius) calc(1.5 * var(--shadow-radius)) var(--shadow-color),
+        calc(-1 * var(--light-radius)) calc(-1 * var(--light-radius)) calc(1.5 * var(--light-radius)) var(--light-color);
+    padding: 20px;
+    box-sizing: border-box;
+}
+
 .neum {
     border-radius: 5px;
     box-shadow: var(--shadow-radius) var(--shadow-radius) calc(1.5 * var(--shadow-radius)) var(--shadow-color),

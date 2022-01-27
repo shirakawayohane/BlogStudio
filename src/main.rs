@@ -1,19 +1,23 @@
-use chrono::Date;
 use chrono::DateTime;
 use chrono::Utc;
 use pulldown_cmark::{html, Options, Parser};
 use std::env;
 use std::fs;
-use std::ops::Deref;
+use std::path::Path;
 use yaml_rust::YamlLoader;
 
 #[derive(Debug)]
 struct Article {
+    // ユニークな識別子。URLの一部にもなる場所
     title: String,
+    // ファイルから自動で取る
     created_at: DateTime<Utc>,
+    // ファイルから自動で取る
     updated_at: DateTime<Utc>,
+    // 無かったら自動で ["Others"] にする
     categories: Vec<String>,
-    html: String,
+    // articleタグの中身
+    content: String,
 }
 
 fn main() {
@@ -31,8 +35,8 @@ fn main() {
 
     let mut articles = Vec::new();
 
-    for dirEntry in fs::read_dir(input_path).unwrap() {
-        let path = dirEntry.unwrap().path();
+    for dir_entry in fs::read_dir(input_path).unwrap() {
+        let path = dir_entry.unwrap().path();
         let _file_content = fs::read_to_string(path.clone()).unwrap(); // 実際はStringなので、ちゃんと左辺値に束縛しておく
         let file_meta = fs::metadata(path).unwrap();
         let file_content = _file_content.as_str();
@@ -66,40 +70,57 @@ fn main() {
             .as_str()
             .expect("メタデータの 'title' は必須項目です")
             .to_string();
-        // let created_at = metadata["created_at"]
-        //     .as_str()
-        //     .expect("メタデータの 'created_at' は必須項目です")
-        //     .to_string();
-        // let updated_at = metadata["updated_at"]
-        //     .as_str()
-        //     .expect("メタデータの 'updated_at' は必須項目です")
-        //     .to_string();
         let created_at: DateTime<Utc> = file_meta.created().unwrap().into();
         let updated_at: DateTime<Utc> = file_meta.created().unwrap().into();
-        let categories = metadata["categories"]
-            .as_vec()
-            .expect("categoriesは配列型である必要があります。")
-            .iter()
-            .map(|x| {
-                x.as_str()
-                    .expect("カテゴリは文字列で表記してください (null非許容)")
-                    .to_string()
-            })
-            .collect();
+        let categories = match metadata["categories"].as_vec() {
+            Some(x) => x
+                .iter()
+                .map(|x| {
+                    x.as_str()
+                        .expect("カテゴリは文字列で表記してください (null非許容)")
+                        .to_string()
+                })
+                .collect::<Vec<String>>(),
+            None => vec!["Others".to_string()],
+        };
 
         let parser = Parser::new_ext(markdown_input, options);
-        let mut html = String::new();
-        html::push_html(&mut html, parser);
+        let mut article = String::new();
+        html::push_html(&mut article, parser);
 
         articles.push(Article {
             title,
             created_at,
             updated_at,
             categories,
-            html,
+            content: article,
         });
     }
 
-    // dbg!(articles);
-    println!("{}", articles[0].created_at.format("%Y-%m-%d"));
+    articles.sort_by(|a, b| a.created_at.cmp(&b.created_at));
+
+    let template = fs::read_to_string("template.html").unwrap();
+
+    let _ = fs::remove_dir_all(output_path);
+    let _ = fs::create_dir(output_path);
+
+    for article in articles {
+        let path_str = format!("{}/{}.html", output_path, article.title);
+        let path = Path::new(&path_str);
+        let exists = Path::exists(path);
+        if exists {
+            panic!("記事名が被っています: {}", article.title);
+        }
+        let html = template.replace(
+            "<article />",
+            &format!(
+                "<article>
+            {}
+</article>",
+                article.content
+            ),
+        );
+        print!("{}/{}.html", output_path, article.title);
+        fs::write(path, html).unwrap();
+    }
 }
