@@ -27,10 +27,9 @@ struct Article {
     content: String,
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     let args: Vec<String> = env::args().collect();
-    let output_dir = args.get(1).unwrap();
+    let output_dir = args.get(1).unwrap().clone();
 
     let mut options = Options::empty();
     options.insert(Options::ENABLE_STRIKETHROUGH);
@@ -107,10 +106,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     articles.sort_by(|a, b| a.created_at.cmp(&b.created_at));
 
-    if Path::exists(Path::new(output_dir)) {
-        fs::remove_dir_all(output_dir).unwrap();
+    if Path::exists(Path::new(&output_dir)) {
+        fs::remove_dir_all(&output_dir).unwrap();
     }
-    fs::create_dir(output_dir).unwrap();
+    fs::create_dir(&output_dir).unwrap();
 
     // 静的ファイルのコピー
     for file in fs::read_dir("wwwroot").unwrap() {
@@ -120,14 +119,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         let output_path = format!(
             "{}/{}",
-            output_dir,
+            &output_dir,
             path.file_name().unwrap().to_str().unwrap()
         );
         println!("{}", output_path);
         fs::copy(path, output_path).unwrap();
     }
 
-    generate_articles(output_dir, &articles);
+    generate_articles(&output_dir, &articles);
 
     if let Some(arg2) = args.get(2) {
         if arg2 == "--watch" {
@@ -144,11 +143,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             watcher.watch("wwwroot", RecursiveMode::Recursive).unwrap();
             let _output_dir = output_dir.clone();
 
-            let watch_task = tokio::task::spawn_blocking(move || match watch_receiver.recv() {
+            let watch_task = thread::spawn(move || match watch_receiver.recv() {
                 Ok(event) => match event {
                     DebouncedEvent::Write(path) | DebouncedEvent::Create(path) => {
                         if path.ends_with("template.html") {
-                            generate_articles(output_dir, &articles);
+                            generate_articles(&output_dir, &articles);
                             return;
                         }
                         let from = path.clone();
@@ -169,15 +168,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 _ => {}
             });
 
-            http_server_task.await;
-            watch_task.await.unwrap();
+            futures::executor::block_on(http_server_task);
+            watch_task.join().unwrap();
         }
     }
-
-    Ok(())
 }
 
-fn generate_articles(output_dir: &String, articles: &Vec<Article>) {
+fn generate_articles(output_dir: &str, articles: &Vec<Article>) {
+    println!("Generating articles...");
     let template = fs::read_to_string("wwwroot/template.html").unwrap();
     fs::create_dir(format!("{}/articles", output_dir)).unwrap();
     for article in articles {
@@ -202,9 +200,18 @@ fn generate_articles(output_dir: &String, articles: &Vec<Article>) {
             )
             .replace(
                 "<ogp></ogp>",
-                format!(
-                    "
-            <meta property=\"og:url\""
+                &format!(
+                    r#"
+<meta property="og:url" content="https://wizlite.jp">
+<meta property="og:type content="website">
+<meta property="og:title" content="{}">
+<meta property="og:image" content="ogp.png">
+<meta property="og:site_name" content="Neuromancy">
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:site" content="@wizlightyear" />
+<meta name="twitter:player" content="@wizlightyear" />
+                "#,
+                    article.title
                 ),
             );
         fs::write(path, html).unwrap();
