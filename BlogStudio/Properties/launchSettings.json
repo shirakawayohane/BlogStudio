@@ -1,0 +1,14 @@
+{
+  "profiles": {
+    "WSL": {
+      "commandName": "WSL2",
+      "environmentVariables": {},
+      "distributionName": ""
+    },
+    "RunOnMyBlog": {
+      "commandName": "Project",
+      "commandLineArgs": "--watch",
+      "workingDirectory": "C:\\Users\\mikut\\source\\wiz\\blog2"
+    }
+  }
+}
