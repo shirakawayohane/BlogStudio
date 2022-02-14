@@ -19,6 +19,8 @@ nupkg/
 
 *.csproj.user
 
+launchSettings.json
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
