@@ -14,7 +14,7 @@ namespace BlogStudio
             var name = Path.GetFileNameWithoutExtension(fullPath);
             var content = await File.ReadAllTextAsync(fullPath);
             HashSet<string> fragDeps = new HashSet<string>();
-            foreach(Match match in fragmentRegex.Matches(content))
+            foreach(Match match in FragmentRegex.Matches(content))
             {
                 var fragmentName = match.Groups[1].Value!;
                 fragDeps.Add(fragmentName);
@@ -33,11 +33,12 @@ namespace BlogStudio
             {
                 Layouts.Add(layout);
             }
-            await Task.WhenAll(
-                Posts
-                .Where(x => x.Layout == layout.Name)
-                .Select(post => HandlePostChange(post))
-            );
+
+            await Parallel.ForEachAsync(Posts.Where(x => x.Layout == layout.Name), async (post, token) =>
+            {
+                await HandlePostChange(post);
+            });
+
             Console.ForegroundColor = ConsoleColor.Blue;
             Console.WriteLine($"A Layout `{layout.Name}` has (re)loaded.");
             Console.ResetColor();

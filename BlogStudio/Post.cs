@@ -38,7 +38,7 @@ public partial class Program
         var fileName = Path.GetFileNameWithoutExtension(fullPath);
 
         Post post;
-        var match = metadataRegex.Match(content);
+        var match = PostRegex.Match(content);
         if(match.Captures.Count > 0)
         {
             var metaContent = match.Groups[1].Value?.Trim();
@@ -71,19 +71,25 @@ public partial class Program
         if (post.Layout == null)
         {
             post.Layout = "default";
-            if (fallback)
+            if (FallbackToDefaultLayout)
             {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"Warning: Metadata `layout` is not specified for {post.OutputPath}.\n Its layout will fall back to default.");
-                Console.ResetColor();
+                lock (ConsoleLockObj)
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"Warning: Metadata `layout` is not specified for {post.OutputPath}.\n Its layout will fall back to default.");
+                    Console.ResetColor();
+                }
             }
         }
 
         if (!ignoreWarnings && post.Layout != null && !Layouts.Any(x => x.Name == post.Layout))
         {
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"Warning: The metadata value `layout` is specified for {post.OutputPath}, but no layout named {post.Layout} found.");
-            Console.ResetColor();
+            lock (ConsoleLockObj)
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"Warning: The metadata value `layout` is specified for {post.OutputPath}, but no layout named {post.Layout} found.");
+                Console.ResetColor();
+            }
         }
 
         return post;
@@ -140,7 +146,7 @@ public partial class Program
         var globals = new Globals(postHtml, Posts, post, Layouts, layout!, null!);
 
         // Embed Fragments
-        var html = await Helpers.ReplaceAsync(fragmentRegex, layout!.Content, async match =>
+        var html = await Helpers.ReplaceAsync(FragmentRegex, layout!.Content, async match =>
         {
             var fragmentName = match.Groups[1].Value!;
             if (Fragments.TryGetValue(new Fragment(fragmentName, null!), out var fragment))
@@ -154,7 +160,7 @@ public partial class Program
                 Dictionary<string, object> fragmentProps = new();
                 for (int i = 2; i < match.Groups.Count; i++)
                 {
-                    foreach (Capture capture in fragmentKvpRegex.Match(kvps).Groups[1].Captures)
+                    foreach (Capture capture in FragmentPropsRegex.Match(kvps).Groups[1].Captures)
                     {
                         var kv = capture.Value.Split("=");
                         var key = kv[0].Trim();
@@ -166,7 +172,7 @@ public partial class Program
                 }
 
                 // Replace Variables
-                return await Helpers.ReplaceAsync(expressionRegex, fragment!.Content, async (match) =>
+                return await Helpers.ReplaceAsync(ExpressionRegex, fragment!.Content, async (match) =>
                 {
                     try
                     {
@@ -203,7 +209,7 @@ public partial class Program
         });
 
         // Replace Variables
-        html = await Helpers.ReplaceAsync(expressionRegex, html, async (match) =>
+        html = await Helpers.ReplaceAsync(ExpressionRegex, html, async (match) =>
         {
             var expStr = match.Groups[1].Value!;
             try
@@ -227,9 +233,12 @@ public partial class Program
         });
 
         await File.WriteAllTextAsync(post.OutputPath, html);
-        Console.ForegroundColor = ConsoleColor.Blue;
-        Console.WriteLine($"A post `{post.Title}` has (re)loaded.");
-        Console.ResetColor();
+        lock (ConsoleLockObj)
+        {
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine($"A post `{post.Title}` has (re)loaded.");
+            Console.ResetColor();
+        }
     }
 }
 

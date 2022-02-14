@@ -18,13 +18,14 @@ public partial class Program
     static readonly HashSet<Fragment> Fragments = new();
     static readonly HashSet<Layout> Layouts = new();
     static JsonSerializerOptions SerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-    static bool fallback = false;
+    static bool FallbackToDefaultLayout = false;
 
+    static Regex ExpressionRegex = new Regex(@"{{\s?([^{]+)\s?}}", RegexOptions.Compiled);
+    static Regex PostRegex = new Regex(@"---[\r\n]+(.+[\r\n\s\S]+)---(.+[\r\n\s\S]+)", RegexOptions.Compiled);
+    static Regex FragmentRegex = new Regex(@"{%\s?([\w-]+)\s?(.+)?%}", RegexOptions.Compiled);
+    static Regex FragmentPropsRegex = new Regex(@"(\s?\w+\s?=\s?""\w+""\s?)*", RegexOptions.Compiled);
 
-    static Regex expressionRegex = new Regex(@"{{\s?([^{]+)\s?}}", RegexOptions.Compiled);
-    static Regex metadataRegex = new Regex(@"---[\r\n]+(.+[\r\n\s\S]+)---(.+[\r\n\s\S]+)", RegexOptions.Compiled);
-    static Regex fragmentRegex = new Regex(@"{%\s?([\w-]+)\s?(.+)?%}", RegexOptions.Compiled);
-    static Regex fragmentKvpRegex = new Regex(@"(\s?\w+\s?=\s?""\w+""\s?)*", RegexOptions.Compiled);
+    static object ConsoleLockObj = new object();
 
     public static async Task Main(string[] args)
     {
@@ -34,45 +35,31 @@ public partial class Program
 
         Directory.CreateDirectory(OutDir);
 
-        fallback = !File.Exists("layouts/default.html");
+        FallbackToDefaultLayout = !File.Exists("layouts/default.html");
 
-        await Task.WhenAll(
-            Directory.EnumerateFiles("posts").Select(async postPath =>
-            {
-                var post = await ReadPost(postPath, true);
-                if (post != null) Posts.Add(post);
-                // generate after layouts loaded.
-            })
-        );
 
-        await Task.WhenAll(
-            Directory.EnumerateFiles("fragments").Select(async fragmentPath =>
-            {
-                var fragment = await ReadFragment(fragmentPath);
-                if (fragment != null) Fragments.Add(fragment);
-                // generate after layouts loaded
-            })
-        );
+        await Parallel.ForEachAsync(Directory.EnumerateFiles("posts"), async (postPath, token) =>
+        {
+            var post = await ReadPost(postPath, true);
+            if (post != null) Posts.Add(post);
+            // generate after layouts loaded.
+        });
 
-        await Task.WhenAll(
-            Directory.EnumerateFiles("fragments").Select(async fragmentPath =>
-            {
-                var fragment = await ReadFragment(fragmentPath);
-                Fragments.Add(fragment);
-            })
-        );
+        await Parallel.ForEachAsync(Directory.EnumerateFiles("fragments"), async (fragmentPath, token) =>
+        {
+            var fragment = await ReadFragment(fragmentPath);
+            if (fragment != null) Fragments.Add(fragment);
+        });
 
-        await Task.WhenAll(
-            Directory.EnumerateFiles("layouts").Select(async layoutPath =>
-            {
-                var layout = await ReadLayout(layoutPath);
-                Layouts.Add(layout);
-                await HandleLayoutChange(layout);
-            })
-        );
+        await Parallel.ForEachAsync(Directory.EnumerateFiles("layouts"), async (layoutPath, token) =>
+        {
+            var layout = await ReadLayout(layoutPath);
+            Layouts.Add(layout);
+            await HandleLayoutChange(layout);
+        });
 
         // If there is no default.html in layouts, generate automatically.
-        if (fallback)
+        if (FallbackToDefaultLayout)
         {
             var defaultLayout = new Layout("default", "{{content}}", new());
             Layouts.Add(defaultLayout);
@@ -124,7 +111,7 @@ public partial class Program
         postsWatcher.Filter = "*.md";
         postsWatcher.EnableRaisingEvents = true;
 
-        var layoutsWatcher = new FileSystemWatcher("layouts");
+        using var layoutsWatcher = new FileSystemWatcher("layouts");
         layoutsWatcher.NotifyFilter = NotifyFilters.Attributes
                              | NotifyFilters.CreationTime
                              | NotifyFilters.DirectoryName
@@ -150,7 +137,7 @@ public partial class Program
             }));
         });
 
-        var assetWatcher = new FileSystemWatcher("wwwroot");
+        using var assetWatcher = new FileSystemWatcher("wwwroot");
         assetWatcher.ChangedAsObservable().Throttle(TimeSpan.FromMilliseconds(ThrottleMs)).Subscribe(asset =>
         {
             File.Copy(asset.FullPath, Path.Combine(OutDir, asset.FullPath.Substring(8)), true);
