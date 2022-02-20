@@ -1,12 +1,7 @@
-﻿using Markdig;
-using Microsoft.CodeAnalysis.CSharp.Scripting;
-using Microsoft.CodeAnalysis.Scripting;
-using System.Diagnostics;
-using System.Linq.Expressions;
+﻿using System.Diagnostics;
 using System.Reactive.Linq;
-using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace BlogStudio;
@@ -45,7 +40,8 @@ public partial class Program
         {
             Config = JsonSerializer.Deserialize<Config>(File.ReadAllText(ConfigPath))!;
             if (Config == null) throw new Exception("Failed to read config file.");
-        } else
+        }
+        else
         {
             Config = Config.Default;
             File.WriteAllText(ConfigPath, JsonSerializer.Serialize(Config));
@@ -57,13 +53,16 @@ public partial class Program
         using var watch = Watch();
 
         Process? serveProcess = null;
-        if(Config!.ServeCommand != null)
+        if (Config!.ServeCommand != null)
         {
             try
             {
                 serveProcess = Process.Start(new ProcessStartInfo()
                 {
-                    FileName = "cmd",
+                    FileName = 
+                      RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "cmd" 
+                    : RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "zsh" 
+                    : RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? "bash" : throw new PlatformNotSupportedException(),
                     RedirectStandardOutput = true,
                     RedirectStandardInput = true,
                     WorkingDirectory = Environment.CurrentDirectory
@@ -74,7 +73,8 @@ public partial class Program
                     Console.WriteLine(args.Data);
                 };
                 serveProcess!.StandardInput.WriteLine($"{Config.ServeCommand} {OutDir}");
-            } catch(Exception)
+            }
+            catch (Exception)
             {
                 Console.WriteLine($"Failed to launch process of `{Config.ServeCommand}` command.");
             }
