@@ -56,7 +56,7 @@ public partial class Program
             {
                 throw new Exception("Please specify `staticPath` metadata for posts without date");
             }
-            post.MarkdownContent = match.Groups[2].Value!.Trim();
+            post.Content = match.Groups[2].Value!.Trim();
         } else
         {
             post = new Post();
@@ -65,22 +65,10 @@ public partial class Program
             post.Title = title;
             post.CreatedAt = createdAt;
             post.OutputPath = outPath!;
-            post.MarkdownContent = content;
+            post.Content = content;
         }
 
-        if (post.Layout == null)
-        {
-            post.Layout = "default";
-            if (FallbackToDefaultLayout)
-            {
-                lock (ConsoleLockObj)
-                {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine($"Warning: Metadata `layout` is not specified for {post.OutputPath}.\n Its layout will fall back to default.");
-                    Console.ResetColor();
-                }
-            }
-        }
+        if(post.Layout == null) post.Layout = Config?.DefaultLayout ?? EmptyLayout;
 
         if (!ignoreWarnings && post.Layout != null && !Layouts.Any(x => x.Name == post.Layout))
         {
@@ -121,7 +109,7 @@ public partial class Program
         // Update cache
         if (Posts.TryGetValue(post, out var oldPost))
         {
-            oldPost.MarkdownContent = post.MarkdownContent;
+            oldPost.Content = post.Content;
             oldPost.Title = post.Title;
             if (oldPost.OutputPath != post.OutputPath)
             {
@@ -141,7 +129,7 @@ public partial class Program
 
         _ = Layouts.TryGetValue(new Layout(post.Layout, "", null!), out var layout);
 
-        var postHtml = Markdown.ToHtml(post.MarkdownContent);
+        var postHtml = post.OutputPath.EndsWith(".md") ? Markdown.ToHtml(post.Content) : post.Content;
 
         var globals = new Globals(postHtml, Posts, post, Layouts, layout!, null!);
 
@@ -246,7 +234,7 @@ public class Post : IEquatable<Post>
 {
     public string Layout { get; set; } = default!; // From metadata. Treat as error if null
     public string Title { get; set; } = default!; // Set manually from path
-    public string MarkdownContent { get; set; } = default!; // Set manually from content
+    public string Content { get; set; } = default!; // Set manually from content
     public DateOnly CreatedAt { get; set; } = default!; // Set manually from path
     public DateOnly? UpdatedAt { get; set; } // Optional
     public string OutputPath { get; set; } = default!; // Set manually from path

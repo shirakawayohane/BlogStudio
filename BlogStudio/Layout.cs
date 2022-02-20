@@ -39,9 +39,12 @@ namespace BlogStudio
                 await HandlePostChange(post);
             });
 
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine($"A Layout `{layout.Name}` has (re)loaded.");
-            Console.ResetColor();
+            lock (ConsoleLockObj)
+            {
+                Console.ForegroundColor = ConsoleColor.Blue;
+                Console.WriteLine($"A Layout `{layout.Name}` has (re)loaded.");
+                Console.ResetColor();
+            }
         }
     }
 

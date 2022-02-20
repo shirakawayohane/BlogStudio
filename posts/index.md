@@ -1,6 +1,6 @@
 ---
 {
-    "StaticPath": "mogemoge/index.html"
+    "StaticPath": "index.html"
 }
 ---
 

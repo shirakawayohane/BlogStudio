@@ -12,7 +12,13 @@ namespace BlogStudio;
 
 public partial class Program
 {
-    const string OutDir = "publish";
+    const string OutDir = "wwwroot";
+    const string EmptyLayout = "__empty";
+    const string AssetPath = "assets";
+    const string PostPath = "posts";
+    const string LayoutPath = "layouts";
+    const string FragmentPath = "fragments";
+    const string ConfigPath = "config.json";
     const int ThrottleMs = 100;
     static readonly HashSet<Post> Posts = new();
     static readonly HashSet<Fragment> Fragments = new();
@@ -26,6 +32,7 @@ public partial class Program
     static Regex FragmentPropsRegex = new Regex(@"(\s?\w+\s?=\s?""\w+""\s?)*", RegexOptions.Compiled);
 
     static object ConsoleLockObj = new object();
+    static Config? Config;
 
     public static async Task Main(string[] args)
     {
@@ -33,133 +40,19 @@ public partial class Program
         SerializerOptions.Converters.Add(new DateOnlyConverter());
         SerializerOptions.Converters.Add(new TimeOnlyConverter());
 
-        Directory.CreateDirectory(OutDir);
-
-        FallbackToDefaultLayout = !File.Exists("layouts/default.html");
-
-
-        await Parallel.ForEachAsync(Directory.EnumerateFiles("posts"), async (postPath, token) =>
+        if (File.Exists(ConfigPath))
         {
-            var post = await ReadPost(postPath, true);
-            if (post != null) Posts.Add(post);
-            // generate after layouts loaded.
-        });
-
-        await Parallel.ForEachAsync(Directory.EnumerateFiles("fragments"), async (fragmentPath, token) =>
+            Config = JsonSerializer.Deserialize<Config>(File.ReadAllText(ConfigPath));
+        } else
         {
-            var fragment = await ReadFragment(fragmentPath);
-            if (fragment != null) Fragments.Add(fragment);
-        });
-
-        await Parallel.ForEachAsync(Directory.EnumerateFiles("layouts"), async (layoutPath, token) =>
-        {
-            var layout = await ReadLayout(layoutPath);
-            Layouts.Add(layout);
-            await HandleLayoutChange(layout);
-        });
-
-        // If there is no default.html in layouts, generate automatically.
-        if (FallbackToDefaultLayout)
-        {
-            var defaultLayout = new Layout("default", "{{content}}", new());
-            Layouts.Add(defaultLayout);
-            await HandleLayoutChange(defaultLayout);
+            Config = Config.Default;
+            File.WriteAllText(ConfigPath, JsonSerializer.Serialize(Config));
         }
 
-        // Copy asset files.
-        foreach (var assetPath in Directory.EnumerateFiles("wwwroot"))
-        {
-            // 8 = wwwroot + \ or /
-            File.Copy(assetPath, Path.Combine(OutDir, assetPath.Substring(8)), true);
-        }
+        await GenerateAsync();
 
         if (!args.Contains("--watch")) return;
-
-        using var postsWatcher = new FileSystemWatcher("posts");
-        postsWatcher.NotifyFilter = NotifyFilters.Attributes
-                             | NotifyFilters.CreationTime
-                             | NotifyFilters.DirectoryName
-                             | NotifyFilters.FileName
-                             | NotifyFilters.LastWrite;
-
-        postsWatcher.ChangedAsObservable().Throttle(TimeSpan.FromMilliseconds(ThrottleMs)).Subscribe(async e =>
-        {
-            if (e.ChangeType is not WatcherChangeTypes.Changed) return;
-            var post = await ReadPost(e.FullPath);
-            if (post != null) await HandlePostChange(post);
-        });
-
-        postsWatcher.RenamedAsObservable().Throttle(TimeSpan.FromMilliseconds(ThrottleMs)).Subscribe(async e =>
-        {
-            var (oldOutputPath, _, _, _) = ParsePostPath(e.OldFullPath);
-
-            Posts.RemoveWhere(post => post.OutputPath == oldOutputPath);
-            if (File.Exists(oldOutputPath)) File.Delete(oldOutputPath);
-
-            await HandlePostChange(await ReadPost(e.FullPath));
-        });
-
-        // do not watch Created Events because newly created file is not valid as a post in almost cases.
-
-        postsWatcher.DeletedAsObservable().Throttle(TimeSpan.FromMilliseconds(ThrottleMs)).Subscribe(e =>
-        {
-            var (outPutPath, _, _, _) = ParsePostPath(e.FullPath);
-            Posts.RemoveWhere(post => post.OutputPath == outPutPath);
-            if (File.Exists(outPutPath)) File.Delete(outPutPath);
-        });
-
-        postsWatcher.Filter = "*.md";
-        postsWatcher.EnableRaisingEvents = true;
-
-        using var layoutsWatcher = new FileSystemWatcher("layouts");
-        layoutsWatcher.NotifyFilter = NotifyFilters.Attributes
-                             | NotifyFilters.CreationTime
-                             | NotifyFilters.DirectoryName
-                             | NotifyFilters.FileName
-                             | NotifyFilters.LastWrite;
-
-        layoutsWatcher.Filter = "*.html";
-        layoutsWatcher.EnableRaisingEvents = true;
-
-        layoutsWatcher.ChangedAsObservable().Throttle(TimeSpan.FromMilliseconds(ThrottleMs)).Subscribe(async e =>
-        {
-            var layout = await ReadLayout(e.FullPath);
-            await HandleLayoutChange(layout);
-        });
-
-        layoutsWatcher.DeletedAsObservable().Throttle(TimeSpan.FromMilliseconds(ThrottleMs)).Subscribe(async e =>
-        {
-            var layoutName = Path.GetFileNameWithoutExtension(e.FullPath);
-            Layouts.RemoveWhere(x => x.Name == layoutName);
-            await Task.WhenAll(Posts.Where(post => post.Layout == layoutName).Select(async post =>
-            {
-                await HandlePostChange(post);
-            }));
-        });
-
-        using var assetWatcher = new FileSystemWatcher("wwwroot");
-        assetWatcher.ChangedAsObservable().Throttle(TimeSpan.FromMilliseconds(ThrottleMs)).Subscribe(asset =>
-        {
-            File.Copy(asset.FullPath, Path.Combine(OutDir, asset.FullPath.Substring(8)), true);
-        });
-        assetWatcher.DeletedAsObservable().Throttle(TimeSpan.FromMilliseconds(ThrottleMs)).Subscribe(asset =>
-        {
-            File.Delete(Path.Combine(OutDir, asset.FullPath.Substring(8)));
-        });
-        assetWatcher.CreatedAsObservable().Throttle(TimeSpan.FromMilliseconds(ThrottleMs)).Subscribe(asset =>
-        {
-            File.Copy(asset.FullPath, Path.Combine(OutDir, asset.FullPath.Substring(8)));
-        });
-        assetWatcher.RenamedAsObservable().Throttle(TimeSpan.FromMilliseconds(ThrottleMs)).Subscribe(asset =>
-        {
-            File.Move(Path.Combine(OutDir, asset.OldFullPath.Substring(8)), Path.Combine(OutDir, asset.FullPath.Substring(8)), true);
-        });
-        assetWatcher.NotifyFilter = NotifyFilters.Attributes
-                             | NotifyFilters.CreationTime
-                             | NotifyFilters.DirectoryName
-                             | NotifyFilters.FileName
-                             | NotifyFilters.LastWrite;
-        assetWatcher.EnableRaisingEvents = true;
+        using var watch = Watch();
 
         Console.ForegroundColor = ConsoleColor.Green;
         Console.WriteLine("Watching files for Hot Reloading. Press Ctrl+C twice to stop.");
@@ -173,5 +66,9 @@ public partial class Program
         terminatedEvent.WaitOne();
         Console.WriteLine("Finished.");
     }
+}
 
+public record Config(string DefaultLayout)
+{
+    public static readonly Config Default = new Config("default");
 }
