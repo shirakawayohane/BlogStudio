@@ -1,6 +1,7 @@
 ﻿using Markdig;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reactive.Linq;
 using System.Reflection;
@@ -32,7 +33,7 @@ public partial class Program
     static Regex FragmentPropsRegex = new Regex(@"(\s?\w+\s?=\s?""\w+""\s?)*", RegexOptions.Compiled);
 
     static object ConsoleLockObj = new object();
-    static Config? Config;
+    static Config Config = default!;
 
     public static async Task Main(string[] args)
     {
@@ -42,7 +43,8 @@ public partial class Program
 
         if (File.Exists(ConfigPath))
         {
-            Config = JsonSerializer.Deserialize<Config>(File.ReadAllText(ConfigPath));
+            Config = JsonSerializer.Deserialize<Config>(File.ReadAllText(ConfigPath))!;
+            if (Config == null) throw new Exception("Failed to read config file.");
         } else
         {
             Config = Config.Default;
@@ -54,6 +56,30 @@ public partial class Program
         if (!args.Contains("--watch")) return;
         using var watch = Watch();
 
+        Process? serveProcess = null;
+        if(Config!.ServeCommand != null)
+        {
+            try
+            {
+                serveProcess = Process.Start(new ProcessStartInfo()
+                {
+                    FileName = "cmd",
+                    RedirectStandardOutput = true,
+                    RedirectStandardInput = true,
+                    WorkingDirectory = Environment.CurrentDirectory
+                });
+                serveProcess!.BeginOutputReadLine();
+                serveProcess!.OutputDataReceived += static (sender, args) =>
+                {
+                    Console.WriteLine(args.Data);
+                };
+                serveProcess!.StandardInput.WriteLine($"{Config.ServeCommand} {OutDir}");
+            } catch(Exception)
+            {
+                Console.WriteLine($"Failed to launch process of `{Config.ServeCommand}` command.");
+            }
+        }
+
         Console.ForegroundColor = ConsoleColor.Green;
         Console.WriteLine("Watching files for Hot Reloading. Press Ctrl+C twice to stop.");
         Console.ResetColor();
@@ -64,11 +90,12 @@ public partial class Program
             terminatedEvent.Set();
         };
         terminatedEvent.WaitOne();
+        serveProcess?.Kill();
         Console.WriteLine("Finished.");
     }
 }
 
-public record Config(string DefaultLayout)
+public record Config(string DefaultLayout, string? ServeCommand)
 {
-    public static readonly Config Default = new Config("default");
+    public static readonly Config Default = new Config("default", null);
 }

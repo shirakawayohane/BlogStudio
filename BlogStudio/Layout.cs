@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+﻿using System.Text.RegularExpressions;
 
 namespace BlogStudio
 {
@@ -14,7 +9,7 @@ namespace BlogStudio
             var name = Path.GetFileNameWithoutExtension(fullPath);
             var content = await File.ReadAllTextAsync(fullPath);
             HashSet<string> fragDeps = new HashSet<string>();
-            foreach(Match match in FragmentRegex.Matches(content))
+            foreach (Match match in FragmentRegex.Matches(content))
             {
                 var fragmentName = match.Groups[1].Value!;
                 fragDeps.Add(fragmentName);

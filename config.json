@@ -1,3 +1,4 @@
 {
-    "DefaultLayout": "post"
+    "DefaultLayout": "post",
+    "ServeCommand": "live-server"
 }

@@ -1,0 +1,14 @@
+{
+  "profiles": {
+    "WSL": {
+      "commandName": "WSL2",
+      "environmentVariables": {},
+      "distributionName": ""
+    },
+    "Watch": {
+      "commandName": "Project",
+      "commandLineArgs": "--watch",
+      "workingDirectory": "..\\"
+    }
+  }
+}
