@@ -31,13 +31,15 @@ namespace BlogStudio
             {
                 var layout = await ReadLayout(layoutPath);
                 Layouts.Add(layout);
-                await HandleLayoutChange(layout);
             });
-
             // Add empty layout.
             var emptyLayout = new Layout(EmptyLayout, "{{content}}", new());
             Layouts.Add(emptyLayout);
-            await HandleLayoutChange(emptyLayout);
+
+            await Parallel.ForEachAsync(Layouts, async (layout, token) =>
+            {
+                await HandleLayoutChange(layout);
+            });
 
             // Copy asset files.
             foreach (var assetPath in Directory.EnumerateFiles(AssetPath))

@@ -19,10 +19,18 @@ public partial class Program
             Fragments.Add(fragment);
         }
 
-        await Task.WhenAll(Layouts.Where(layout => layout.FragmentDependencies.Contains(fragment.Name)).Select(async layout =>
+        await Task.WhenAll(Layouts.Where(layout => layout.FragmentDependencies.Contains(fragment.Name))
+            .Select(async layout =>
         {
             await HandleLayoutChange(layout);
         }));
+
+        lock (ConsoleLockObj)
+        {
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine($"A Fragment `{fragment.Name}` has (re)loaded.");
+            Console.ResetColor();
+        }
     }
     static async Task<Fragment> ReadFragment(string fullPath)
     {

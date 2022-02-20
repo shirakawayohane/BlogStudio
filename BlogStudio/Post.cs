@@ -105,7 +105,10 @@ public partial class Program
 
     static async Task HandlePostChange(Post post)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(post.OutputPath)!);
+        // Possbily null when using StaticPath
+        var outputDir = Path.GetDirectoryName(post.OutputPath!);
+        if(outputDir != null) Directory.CreateDirectory(outputDir);
+
         // Update cache
         if (Posts.TryGetValue(post, out var oldPost))
         {
@@ -129,7 +132,9 @@ public partial class Program
 
         _ = Layouts.TryGetValue(new Layout(post.Layout, "", null!), out var layout);
 
-        var postHtml = post.OutputPath.EndsWith(".md") ? Markdown.ToHtml(post.Content) : post.Content;
+        var postHtml = post.InputPath.EndsWith(".md") || post.InputPath.EndsWith(".markdown") 
+            ? Markdown.ToHtml(post.Content) 
+            : post.Content;
 
         var globals = new Globals(postHtml, Posts, post, Layouts, layout!, null!);
 

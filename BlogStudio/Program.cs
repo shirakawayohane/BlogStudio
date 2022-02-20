@@ -27,7 +27,7 @@ public partial class Program
     static bool FallbackToDefaultLayout = false;
 
     static Regex ExpressionRegex = new Regex(@"{{\s?([^{]+)\s?}}", RegexOptions.Compiled);
-    static Regex PostRegex = new Regex(@"---[\r\n]+(.+[\r\n\s\S]+)---(.+[\r\n\s\S]+)", RegexOptions.Compiled);
+    static Regex PostRegex = new Regex(@"\s?---\s?[\r\n]+([^(---)]+)\s?---\s?[\r\n]+([\r\n\s\S]+)", RegexOptions.Compiled);
     static Regex FragmentRegex = new Regex(@"{%\s?([\w-]+)\s?(.+)?%}", RegexOptions.Compiled);
     static Regex FragmentPropsRegex = new Regex(@"(\s?\w+\s?=\s?""\w+""\s?)*", RegexOptions.Compiled);
 
