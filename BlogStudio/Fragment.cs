@@ -9,6 +9,13 @@ namespace BlogStudio;
 
 public partial class Program
 {
+    static async Task<Fragment> ReadFragmentAsync(string fullPath)
+    {
+        var name = Path.GetFileNameWithoutExtension(fullPath);
+        var content = await File.ReadAllTextAsync(fullPath);
+        return new Fragment(name, content);
+    }
+
     static async Task HandleFragmentChanged(Fragment fragment)
     {
         if(Fragments.TryGetValue(fragment, out var oldFragment))
@@ -31,12 +38,6 @@ public partial class Program
             Console.WriteLine($"A Fragment `{fragment.Name}` has (re)loaded.");
             Console.ResetColor();
         }
-    }
-    static async Task<Fragment> ReadFragment(string fullPath)
-    {
-        var name = Path.GetFileNameWithoutExtension(fullPath);
-        var content = await File.ReadAllTextAsync(fullPath);
-        return new Fragment(name, content);
     }
 }
 

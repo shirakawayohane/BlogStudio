@@ -16,20 +16,20 @@ namespace BlogStudio
             {
                 if (!postPath.EndsWith(".md") && !postPath.EndsWith(".html")) return;
 
-                var post = await ReadPost(postPath, true);
+                var post = await ReadPostAsync(postPath, true);
                 if (post != null) Posts.Add(post);
                 // generate after layouts loaded.
             });
 
             await Parallel.ForEachAsync(Directory.EnumerateFiles(FragmentPath), async (fragmentPath, token) =>
             {
-                var fragment = await ReadFragment(fragmentPath);
+                var fragment = await ReadFragmentAsync(fragmentPath);
                 if (fragment != null) Fragments.Add(fragment);
             });
 
             await Parallel.ForEachAsync(Directory.EnumerateFiles(LayoutPath), async (layoutPath, token) =>
             {
-                var layout = await ReadLayout(layoutPath);
+                var layout = await ReadLayoutAsync(layoutPath);
                 Layouts.Add(layout);
             });
             // Add empty layout.

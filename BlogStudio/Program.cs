@@ -14,6 +14,7 @@ public partial class Program
     const string PostPath = "posts";
     const string LayoutPath = "layouts";
     const string FragmentPath = "fragments";
+    const string PagePath = "pages";
     const string ConfigPath = "config.json";
     const int ThrottleMs = 100;
     static readonly HashSet<Post> Posts = new();
@@ -40,6 +41,8 @@ public partial class Program
             Config = Config.Default;
             File.WriteAllText(ConfigPath, JsonSerializer.Serialize(Config));
         }
+
+        Directory.Delete(OutDir, true);
 
         await GenerateAsync();
 

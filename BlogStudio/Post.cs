@@ -18,49 +18,48 @@ using static Layout;
 public partial class Program
 {
 
-    static readonly IDeserializer serializer = new DeserializerBuilder()
-    .WithNamingConvention(CamelCaseNamingConvention.Instance)  // see height_in_inches in sample yml 
-    .Build();
-    static async Task<Post> ReadPost(string fullPath, bool ignoreWarnings = false)
+    static async Task<Post?> ReadPostAsync(string fullPath, bool ignoreWarnings = false)
     {
-        var content = await File.ReadAllTextAsync(fullPath);
+        var fileContent = await File.ReadAllTextAsync(fullPath);
 
         var fileName = Path.GetFileNameWithoutExtension(fullPath);
 
-        Post post;
-
         // メタデータがある場合は、YAMLとして読む。なければ、ファイル名の情報から生成する
-        var match = Helpers.PostRegex.Match(content);
-        if(match.Captures.Count > 0)
-        {
-            var metaContent = match.Groups[1].Value?.Trim();
-            post = string.IsNullOrWhiteSpace(metaContent) ? new() : serializer.Deserialize<Post>(metaContent)!;
+        //if(match.Captures.Count > 0)
+        //{
+        //    var metaContent = match.Groups[1].Value?.Trim();
+        //    post = string.IsNullOrWhiteSpace(metaContent) ? new() : Helpers.YamlDeserializer.Deserialize<Post>(metaContent)!;
 
-            var (outPath, createdAt, title, staticPath) = ParsePostPath(fullPath);
-            post.InputPath = fullPath;
-            post.Title = title; // Ignore title from meta, even if exists, for simplicity.
-            post.CreatedAt = createdAt;
-            post.Content = match.Groups[2].Value!.Trim();
-            try
-            {
-                post.OutputPath = outPath ?? Path.Combine(OutDir, post.Path!);
-            }
-            catch (Exception)
-            {
-                throw new Exception($"Please specify {nameof(post.Path)} metadata for posts without date");
-            }
-        }
-        else
-        {
-            post = new Post();
-            var (outPath, createdAt, title, staticPath) = ParsePostPath(fullPath);
-            post.InputPath = fullPath;
-            post.Title = title;
-            post.CreatedAt = createdAt;
-            post.OutputPath = outPath!;
-            post.Content = content;
-        }
-
+        //    var (outPath, createdAt, title, staticPath) = ParsePostPath(fullPath);
+        //    post.InputPath = fullPath;
+        //    post.Title = title; // Ignore title from meta, even if exists, for simplicity.
+        //    post.CreatedAt = createdAt;
+        //    post.Content = match.Groups[2].Value!.Trim();
+        //    try
+        //    {
+        //        post.OutputPath = outPath ?? Path.Combine(OutDir, post.Path!);
+        //    }
+        //    catch (Exception)
+        //    {
+        //        throw new Exception($"Please specify {nameof(post.Path)} metadata for posts without date");
+        //    }
+        //}
+        //else
+        //{
+        //    post = new Post();
+        //    var (outPath, createdAt, title, staticPath) = ParsePostPath(fullPath);
+        //    post.InputPath = fullPath;
+        //    post.Title = title;
+        //    post.CreatedAt = createdAt;
+        //    post.OutputPath = outPath!;
+        //    post.Content = content;
+        //}
+        var (metaStr, mainContent) = Helpers.SeparateMetaAndContent(fileContent);
+        var post = metaStr != null ? Helpers.YamlDeserializer.Deserialize<Post>(metaStr) : new();
+        var (outPath, createdAt, title) = ParsePostPath(fullPath);
+        post.OutputPath = outPath;
+        post.CreatedAt = createdAt;
+        post.
         if(post.Layout == null) post.Layout = Config?.DefaultLayout ?? EmptyLayout;
 
         if (!ignoreWarnings && post.Layout != null && !Layouts.Any(x => x.Name == post.Layout))
@@ -76,27 +75,22 @@ public partial class Program
         return post;
     }
 
-    static (string? OutputPath, DateOnly CreatedAt, string Title, bool staticPath) ParsePostPath(string fullPath)
+    public static string GetPostOutputDirectoryFromInputPath(string path)
     {
-        var fileNameWithoutEx = Path.GetFileNameWithoutExtension(fullPath);
-        string[] hyphenSplitted = fileNameWithoutEx.Split("-");
-        if (hyphenSplitted.Length >= 4)
-        {
-            var date = new DateOnly(int.Parse(hyphenSplitted[0]), int.Parse(hyphenSplitted[1]), int.Parse(hyphenSplitted[2]));
-            string outDir = Path.Combine(OutDir, date.Year.ToString("D4"), date.Month.ToString("D2"), date.Day.ToString("D2"));
-            var fileName = string.Join("", hyphenSplitted.Skip(3));
-            return (Path.Combine(outDir, fileName + ".html"), date, Path.GetFileNameWithoutExtension(fileName), false);
-        }
-        else
-        {
-            var date = DateOnly.FromDateTime(File.GetCreationTime(fullPath));
-            // posts\ or posts/ = 6 length
-            return (null, date, fileNameWithoutEx, true);
-        }
+        var date = ParseDateOnly(path);
+        return Path.Combine(OutDir, date.Year.ToString("D4"), date.Month.ToString("D2"), date.Day.ToString("D2"));
+    }
+
+    public static string GetPostTitleFromPath(string path) => path[11..];
+
+    public static DateOnly ParseDateOnly(string path)
+    {
+        if (path[4] != '-' || path[8] != '-') throw new ArgumentException("Failed to parse DateOnly. argument must be following format: YYYY-MM-dd");
+        return new DateOnly(int.Parse(path[..4]), int.Parse(path[5..7]), int.Parse(path[9..11]));
     }
 
 
-    static readonly MarkdownPipeline pipeline = new Markdig.MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
+    static MarkdownPipeline pipeline = new Markdig.MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
     static async Task HandlePostChange(Post post)
     {
         // Possbily null when using StaticPath

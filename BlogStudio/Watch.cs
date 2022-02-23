@@ -17,7 +17,7 @@ namespace BlogStudio
             postsWatcher.ChangedAsObservable().Throttle(throttleTime).Subscribe(static async e =>
             {
                 if (e.ChangeType is not WatcherChangeTypes.Changed) return;
-                var post = await ReadPost(e.FullPath);
+                var post = await ReadPostAsync(e.FullPath);
                 if (post != null) await HandlePostChange(post);
             });
 
@@ -28,7 +28,7 @@ namespace BlogStudio
                 Posts.RemoveWhere(post => post.OutputPath == oldOutputPath);
                 if (File.Exists(oldOutputPath)) File.Delete(oldOutputPath);
 
-                await HandlePostChange(await ReadPost(e.FullPath));
+                await HandlePostChange(await ReadPostAsync(e.FullPath));
             });
 
             // do not watch Created Events because newly created file is not valid as a post in almost cases.
@@ -52,7 +52,7 @@ namespace BlogStudio
 
             fragmentsWatcher.ChangedAsObservable().Throttle(throttleTime).Subscribe(static async e =>
             {
-                var fragment = await ReadFragment(e.FullPath);
+                var fragment = await ReadFragmentAsync(e.FullPath);
                 await HandleFragmentChanged(fragment);
             });
             fragmentsWatcher.DeletedAsObservable().Throttle(throttleTime).Subscribe(static async e =>
@@ -87,7 +87,7 @@ namespace BlogStudio
 
             layoutsWatcher.ChangedAsObservable().Throttle(throttleTime).Subscribe(static async e =>
             {
-                var layout = await ReadLayout(e.FullPath);
+                var layout = await ReadLayoutAsync(e.FullPath);
                 await HandleLayoutChange(layout);
             });
 

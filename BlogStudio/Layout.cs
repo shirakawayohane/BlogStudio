@@ -4,7 +4,7 @@ namespace BlogStudio
 {
     public partial class Program
     {
-        static async Task<Layout> ReadLayout(string fullPath)
+        static async Task<Layout> ReadLayoutAsync(string fullPath)
         {
             var name = Path.GetFileNameWithoutExtension(fullPath);
             var content = await File.ReadAllTextAsync(fullPath);

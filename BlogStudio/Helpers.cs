@@ -6,6 +6,8 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace BlogStudio;
 internal static class Helpers
@@ -42,10 +44,28 @@ internal static class Helpers
         return sb.ToString();
     }
 
-    public static Regex PostRegex = new (@"\s?---\s?[\r\n]+([^(---)]+)\s?---\s?[\r\n]+([\r\n\s\S]+)", RegexOptions.Compiled);
-    public static Regex FragmentRegex = new (@"{%\s?([\w-]+)\s?(.+)?%}", RegexOptions.Compiled);
-    public static Regex FragmentPropsRegex = new (@"(\s?\w+\s?=\s?""\w+""\s?)*", RegexOptions.Compiled);
-    public static Regex ExpressionRegex = new (@"{{\s?([^{]+)\s?}}", RegexOptions.Compiled);
+    public static Regex PostRegex = new(@"\s?---\s?[\r\n]+([^(---)]+)\s?---\s?[\r\n]+([\r\n\s\S]+)", RegexOptions.Compiled);
+    public static Regex FragmentRegex = new(@"{%\s?([\w-]+)\s?(.+)?%}", RegexOptions.Compiled);
+    public static Regex FragmentPropsRegex = new(@"(\s?\w+\s?=\s?""\w+""\s?)*", RegexOptions.Compiled);
+    public static Regex ExpressionRegex = new(@"{{\s?([^{]+)\s?}}", RegexOptions.Compiled);
+
+    public static IDeserializer YamlDeserializer = new DeserializerBuilder()
+    .WithNamingConvention(CamelCaseNamingConvention.Instance)  // see height_in_inches in sample yml 
+    .Build();
+
+    public static (string? Meta, string Content) SeparateMetaAndContent(string content)
+    {
+        // メタデータがある場合は、YAMLとして読む。なければ、ファイル名の情報から生成する
+        var match = Helpers.PostRegex.Match(content);
+        if (match.Captures.Count > 0)
+        {
+            var meta = match.Groups[1].Value?.Trim()!;
+            var mainContent = match.Groups[2].Value!.Trim()!;
+            return (meta, mainContent);
+        }
+        return (null, content);
+    }
+
     static ScriptOptions? _scriptOptions;
     public static ScriptOptions ScriptOptions
     {
@@ -92,7 +112,7 @@ internal static class Helpers
             }
             else
             {
-                
+
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.WriteLine($"Fragment `{fragmentName}` not found.");
                 Console.ResetColor();
