@@ -116,19 +116,19 @@ namespace BlogStudio
             var assetsWatcher = new FileSystemWatcher(AssetPath);
             assetsWatcher.ChangedAsObservable().Throttle(throttleTime).Subscribe(static asset =>
             {
-                File.Copy(asset.FullPath, Path.Combine(OutDir, asset.FullPath.Substring(AssetPath.Length + 1)), true);
+                File.Copy(asset.FullPath, Path.Combine(OutDir, asset.FullPath[(AssetPath.Length + 1)..]), true);
             });
             assetsWatcher.DeletedAsObservable().Throttle(throttleTime).Subscribe(static asset =>
             {
-                File.Delete(Path.Combine(OutDir, asset.FullPath.Substring(AssetPath.Length + 1)));
+                File.Delete(Path.Combine(OutDir, asset.FullPath[(AssetPath.Length + 1)..]));
             });
             assetsWatcher.CreatedAsObservable().Throttle(throttleTime).Subscribe(static asset =>
             {
-                File.Copy(asset.FullPath, Path.Combine(OutDir, asset.FullPath.Substring(AssetPath.Length + 1)));
+                File.Copy(asset.FullPath, Path.Combine(OutDir, asset.FullPath[(AssetPath.Length + 1)..]));
             });
             assetsWatcher.RenamedAsObservable().Throttle(throttleTime).Subscribe(static asset =>
             {
-                File.Move(Path.Combine(OutDir, asset.OldFullPath.Substring(AssetPath.Length + 1)), Path.Combine(OutDir, asset.FullPath.Substring(8)), true);
+                File.Move(Path.Combine(OutDir, asset.OldFullPath[(AssetPath.Length + 1)..]), Path.Combine(OutDir, asset.FullPath[(AssetPath.Length + 1)..]), true);
             });
             assetsWatcher.NotifyFilter = NotifyFilters.Attributes
                                  | NotifyFilters.CreationTime
@@ -144,7 +144,7 @@ namespace BlogStudio
 
     internal class DisposableBag : IDisposable
     {
-        List<IDisposable> _disposables = new();
+        readonly List<IDisposable> _disposables = new();
         public DisposableBag(params IDisposable[] disposables)
         {
             _disposables = disposables.ToList();
@@ -157,7 +157,7 @@ namespace BlogStudio
 
         public void Dispose()
         {
-            foreach(var disposable in _disposables)
+            foreach (var disposable in _disposables)
                 disposable.Dispose();
         }
     }

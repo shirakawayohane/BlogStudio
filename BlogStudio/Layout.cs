@@ -8,8 +8,8 @@ namespace BlogStudio
         {
             var name = Path.GetFileNameWithoutExtension(fullPath);
             var content = await File.ReadAllTextAsync(fullPath);
-            HashSet<string> fragDeps = new HashSet<string>();
-            foreach (Match match in FragmentRegex.Matches(content))
+            HashSet<string> fragDeps = new();
+            foreach (Match match in Helpers.FragmentRegex.Matches(content))
             {
                 var fragmentName = match.Groups[1].Value!;
                 fragDeps.Add(fragmentName);

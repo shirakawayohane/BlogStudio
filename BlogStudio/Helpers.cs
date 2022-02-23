@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Microsoft.CodeAnalysis.CSharp.Scripting;
+using Microsoft.CodeAnalysis.Scripting;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,7 +14,7 @@ internal static class Helpers
     {
         if (string.IsNullOrEmpty(path))
         {
-            throw new ArgumentNullException("path");
+            throw new ArgumentNullException(nameof(path));
         }
 
         var folder = new DirectoryInfo(path);
@@ -38,5 +40,90 @@ internal static class Helpers
 
         sb.Append(input, lastIndex, input.Length - lastIndex);
         return sb.ToString();
+    }
+
+    public static Regex PostRegex = new (@"\s?---\s?[\r\n]+([^(---)]+)\s?---\s?[\r\n]+([\r\n\s\S]+)", RegexOptions.Compiled);
+    public static Regex FragmentRegex = new (@"{%\s?([\w-]+)\s?(.+)?%}", RegexOptions.Compiled);
+    public static Regex FragmentPropsRegex = new (@"(\s?\w+\s?=\s?""\w+""\s?)*", RegexOptions.Compiled);
+    public static Regex ExpressionRegex = new (@"{{\s?([^{]+)\s?}}", RegexOptions.Compiled);
+    static ScriptOptions? _scriptOptions;
+    public static ScriptOptions ScriptOptions
+    {
+        get
+        {
+            if (_scriptOptions == null)
+            {
+                _scriptOptions = ScriptOptions.Default
+                .AddReferences("System.Core")
+                .AddImports("System.Linq");
+            }
+            return _scriptOptions;
+        }
+    }
+
+    public static Task<string> EmbedFragments(IEnumerable<Fragment> fragments, string content, Globals globals)
+    {
+        return ReplaceAsync(FragmentRegex, content, async match =>
+        {
+            var fragmentName = match.Groups[1].Value!;
+            if (fragments.Any(x => x.Name == fragmentName))
+            {
+                if (match.Captures.Count == 2)
+                {
+                    return content;
+                }
+
+                var kvps = match.Groups[2].Value!;
+                Dictionary<string, object> fragmentProps = new();
+                for (int i = 2; i < match.Groups.Count; i++)
+                {
+                    foreach (Capture capture in FragmentPropsRegex.Match(kvps).Groups[1].Captures)
+                    {
+                        var kv = capture.Value.Split("=");
+                        var key = kv[0].Trim();
+                        var valueStr = kv[1].Trim();
+                        fragmentProps[key] = (valueStr[0] == '"' ? valueStr[1..^1] :
+                            int.TryParse(valueStr, out var intValue) ? intValue :
+                            float.TryParse(valueStr, out var floatValue) ? floatValue : "");
+                    }
+                }
+
+                return await EmbedVariables(content, globals with { props = fragmentProps });
+            }
+            else
+            {
+                
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"Fragment `{fragmentName}` not found.");
+                Console.ResetColor();
+                return "";
+            }
+        });
+    }
+
+    public static Task<string> EmbedVariables(string content, Globals globals)
+    {
+        return ReplaceAsync(ExpressionRegex, content, async (match) =>
+        {
+            var expStr = match.Groups[1].Value!;
+            try
+            {
+                var expValue = await CSharpScript.EvaluateAsync(expStr,
+                    options: ScriptOptions,
+                    globals: globals
+                );
+
+                return expValue switch
+                {
+                    string str => str,
+                    IEnumerable<string> strs => string.Join(Environment.NewLine, strs),
+                    _ => expValue?.ToString() ?? ""
+                };
+            }
+            catch (Exception)
+            {
+                return "";
+            }
+        });
     }
 }

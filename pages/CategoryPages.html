@@ -1,0 +1,8 @@
+---
+matrix: "(from post in posts
+where post.Categories != null && post.Categories.Any()
+from category in post.Categories
+select category
+).Distinct()
+.Dump();"
+---

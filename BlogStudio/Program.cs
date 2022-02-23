@@ -19,15 +19,9 @@ public partial class Program
     static readonly HashSet<Post> Posts = new();
     static readonly HashSet<Fragment> Fragments = new();
     static readonly HashSet<Layout> Layouts = new();
-    static JsonSerializerOptions SerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-    static bool FallbackToDefaultLayout = false;
+    static readonly JsonSerializerOptions SerializerOptions = new (JsonSerializerDefaults.Web);
 
-    static Regex ExpressionRegex = new Regex(@"{{\s?([^{]+)\s?}}", RegexOptions.Compiled);
-    static Regex PostRegex = new Regex(@"\s?---\s?[\r\n]+([^(---)]+)\s?---\s?[\r\n]+([\r\n\s\S]+)", RegexOptions.Compiled);
-    static Regex FragmentRegex = new Regex(@"{%\s?([\w-]+)\s?(.+)?%}", RegexOptions.Compiled);
-    static Regex FragmentPropsRegex = new Regex(@"(\s?\w+\s?=\s?""\w+""\s?)*", RegexOptions.Compiled);
-
-    static object ConsoleLockObj = new object();
+    static readonly object ConsoleLockObj = new();
     static Config Config = default!;
 
     public static async Task Main(string[] args)
@@ -83,7 +77,7 @@ public partial class Program
         Console.ForegroundColor = ConsoleColor.Green;
         Console.WriteLine("Watching files for Hot Reloading. Press Ctrl+C twice to stop.");
         Console.ResetColor();
-        AutoResetEvent terminatedEvent = new AutoResetEvent(false);
+        AutoResetEvent terminatedEvent = new(false);
         Console.CancelKeyPress += (object? sender, ConsoleCancelEventArgs e) =>
         {
             e.Cancel = true;
@@ -97,5 +91,5 @@ public partial class Program
 
 public record Config(string DefaultLayout, string? ServeCommand)
 {
-    public static readonly Config Default = new Config("default", null);
+    public static readonly Config Default = new("default", null);
 }

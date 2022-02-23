@@ -44,7 +44,7 @@ namespace BlogStudio
             // Copy asset files.
             foreach (var assetPath in Directory.EnumerateFiles(AssetPath))
             {
-                File.Copy(assetPath, Path.Combine(OutDir, assetPath.Substring(AssetPath.Length + 1)), true);
+                File.Copy(assetPath, Path.Combine(OutDir, assetPath[(AssetPath.Length + 1)..]), true);
             }
 
         }
